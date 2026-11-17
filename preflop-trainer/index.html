@@ -203,7 +203,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .pcard:last-child{transform:rotate(6deg);margin-left:-.13em}
 .pcard .idx{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:.9}
 .pcard .idx .r{font-family:var(--display);font-size:.3em}
-.pcard .idx .s{font-size:.2em;line-height:1;margin-top:.3em}   /* room for the Q's tail */
+.pcard .idx .s{font-size:.2em;line-height:1;margin-top:var(--qtail,.3em)}   /* room for the Q's tail, measured in fitCorners() */
 .pcard .tl{top:.055em;left:.075em}
 .pcard .br{bottom:.055em;right:.075em;transform:rotate(180deg)}
 .pcard .face{position:absolute;inset:0;display:grid;place-items:center;font-size:.44em;line-height:1;opacity:.9}
@@ -1032,6 +1032,22 @@ function deal(silent){
 
 /* ---------------- rendering ---------------- */
 function el(id){return document.getElementById(id);}
+// The queen's tail drops below the rank's line, and how far depends on the font that actually loaded.
+// Measure it once the fonts are ready and space every card's suit just below it, so the corners stay alike.
+function fitCorners(){
+  try{
+    var fam=getComputedStyle(document.documentElement).getPropertyValue("--display").trim()||"serif";
+    var c=document.createElement("canvas").getContext("2d");c.font="100px "+fam;
+    var q=c.measureText("Q"),m=c.measureText("M");
+    if(typeof q.actualBoundingBoxDescent!=="number"||typeof m.fontBoundingBoxAscent!=="number")return;
+    var asc=m.fontBoundingBoxAscent/100,desc=m.fontBoundingBoxDescent/100,tail=q.actualBoundingBoxDescent/100;
+    var below=(0.9-asc+desc)/2;                          // how far the rank's .9 line box reaches below the baseline
+    var gap=Math.max(0.02,(tail-below)*1.5+0.3);        // rank is .3em and suit .2em: x1.5 converts; +.3 breathing room
+    document.documentElement.style.setProperty("--qtail",Math.min(0.8,gap).toFixed(3)+"em");
+  }catch(e){}
+}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitCorners);else fitCorners();
+
 /* ---------------- sound ----------------
    Real recordings of cards and chips: Kenney's Casino Audio pack (kenney.nl, CC0: free for any use).
    assemble.py embeds the recordings from kit/sounds/ into the page, so it still works as one offline file.
