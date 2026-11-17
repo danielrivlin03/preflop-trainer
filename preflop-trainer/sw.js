@@ -1,7 +1,7 @@
 // Preflop Trainer offline support. The app's own files are stored on install; the page is
 // fetched fresh when online (so updates arrive) and served from storage when offline.
 // Fonts are cached the first time they load. Bump VERSION (and the version shown in Settings) with each update.
-const VERSION = "preflop-v5";
+const VERSION = "preflop-v6";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png",
                "icon-1024.png", "icon-maskable-512.png", "icon-maskable-1024.png", "apple-touch-icon.png"];
 

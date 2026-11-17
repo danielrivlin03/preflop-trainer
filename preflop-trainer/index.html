@@ -391,6 +391,23 @@ ul.tight li{margin-bottom:5px}
 .seg.small button{padding:7px 10px;font-size:12.5px}
 .seg button:disabled{opacity:.32;cursor:default;border-style:dashed}
 .pickhint{font-size:11.5px;color:var(--muted);margin:2px 2px 0}
+.pgrid{display:grid;gap:5px;margin:6px 0 0;align-items:center}
+.pgrid .pcorner{font-size:10.5px;color:var(--muted);text-align:left;white-space:nowrap}
+.pgrid .phead{height:28px;padding:0;border:0;background:none;font-size:11.5px;font-weight:700;color:var(--muted);border-radius:8px;cursor:pointer}
+.pgrid .phead:active{background:var(--panel-2)}
+.pgrid .prow{text-align:left;padding-left:2px}
+.pgrid .pcell{height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);padding:0;cursor:pointer;position:relative;
+  transition:background .12s,border-color .12s}
+.pgrid .pcell[aria-pressed="true"]{background:var(--text);border-color:var(--text)}
+.pgrid .pcell[aria-pressed="true"]::after{content:"";position:absolute;left:50%;top:50%;width:10px;height:6px;margin:-5px 0 0 -5px;
+  border-left:2.5px solid var(--bg);border-bottom:2.5px solid var(--bg);transform:rotate(-45deg)}
+.pgrid .pcell:disabled{opacity:.32;border-style:dashed;cursor:default}
+.pgrid .pnone{height:34px}
+.seg.presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.seg.presets button{padding:9px 10px}
+.presets button[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:var(--bg)}
+.pickcount{font-size:13px;color:var(--muted);margin:2px 2px 0}
+.pickcount b{color:var(--text)}
 .row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line-soft)}
 .row .lbl{flex:1;font-size:14px}
 .row .lbl small{display:block;color:var(--muted);font-size:12px}
@@ -601,7 +618,7 @@ ul.tight li{margin-bottom:5px}
     </div>
   </div>
   </div>
-  <div class="pickhint" id="appVersion" style="text-align:center;margin-top:14px">App version 5 · 17 Nov 2026</div>
+  <div class="pickhint" id="appVersion" style="text-align:center;margin-top:14px">App version 6 · 17 Nov 2026</div>
   <div class="btnrow" style="margin:14px 0 4px">
     <button class="btn primary" id="btnCloseSheet" style="flex:1">Done</button>
   </div>
@@ -661,7 +678,7 @@ function unpackGrid(s){
 }
 function serialize(){
   var c={};for(var id in S.charts){if(S.charts[id])c[id]=packGrid(S.charts[id]);}
-  return {v:1,slots:S.slots,charts:c,on:S.on,f:S.f,p:S.p,fix:S.fix,stats:S.stats,seeded:S.seeded,off:S.off,savedAt:S.savedAt};
+  return {v:1,pv:2,slots:S.slots,charts:c,on:S.on,f:S.f,p:S.p,fix:S.fix,stats:S.stats,seeded:S.seeded,off:S.off,savedAt:S.savedAt};
 }
 function hydrate(d){
   if(!d||typeof d!=="object")return;
@@ -693,6 +710,14 @@ function hydrate(d){
   S.seeded=Array.isArray(d.seeded)?d.seeded:FIRST_DEFAULTS.slice();
   migrateSlots();
   S.off=(d.off&&typeof d.off==="object")?{sit:d.off.sit||[],hero:d.off.hero||[],vill:d.off.vill||[]}:offFromOn();
+  if(d.pv!==2){
+    // Saves from before the scenario grid: turn the old situation / seat filters into per-scenario choices.
+    loadedSlots().forEach(function(x){
+      if(sitOf(x)==="custom")return;
+      S.on[x.id]=!isOff("sit",x.sit)&&!isOff("hero",x.hero)&&(x.vill==null||!isOff("vill",x.vill));
+    });
+  }
+  S.off={sit:[],hero:[],vill:[]};
 }
 var db=null,writing=false,pending=false,saveTimer=null;
 function save(){
@@ -910,10 +935,7 @@ function noteMiss(){
 function loadedSlots(){return S.slots.filter(function(s){return S.charts[s.id];});}
 var PICK_SITS=["open","vsr","vs3"];
 function isOff(kind,v){return S.off[kind].indexOf(v)>=0;}
-function picked(s){
-  if(sitOf(s)==="custom")return S.on[s.id]!==false;
-  return !isOff("sit",s.sit)&&!isOff("hero",s.hero)&&(s.vill==null||!isOff("vill",s.vill));
-}
+function picked(s){return S.on[s.id]!==false;}     // each scenario is on or off by itself (pv 2)
 function testable(s){return S.f.fixMode||pool(s.id).length>0;}
 function activeSlots(){return loadedSlots().filter(function(s){return picked(s)&&testable(s);});}
 // What can be picked, given the charts loaded and the choices above it.
@@ -929,6 +951,59 @@ function pickState(){
   return st;
 }
 // Older saves stored on/off per scenario; carry that over as best we can.
+// ---- scenarios in rotation: presets, the opens, and a grid of seats for each situation ----
+var PRESETS=[
+  {k:"blinds",n:"Blind defence",f:function(x){return x.sit==="vsr"&&x.hero>=4;}},
+  {k:"open",n:"Opening",f:function(x){return x.sit==="open";}},
+  {k:"btn",n:"Button play",f:function(x){return x.hero===3;}},
+  {k:"all",n:"Everything",f:function(){return true;}}
+];
+function stdSlots(){return loadedSlots().filter(function(x){return sitOf(x)!=="custom";});}
+function slotAt(sit,hero,vill){var id=slotIdFor(sit,hero,vill);return stdSlots().filter(function(x){return x.id===id;})[0]||null;}
+function setOn(list,on){list.forEach(function(x){S.on[x.id]=on;});}
+function pickerHTML(){
+  var std=stdSlots(),use=std.filter(testable),h="",i,j;
+  // presets: lit when exactly that set is in rotation
+  h+='<div class="seg small presets" style="margin:2px 0 12px">';
+  PRESETS.forEach(function(pr){
+    var want=use.filter(pr.f),lit=want.length>0&&use.every(function(x){return picked(x)===pr.f(x);});
+    h+='<button data-preset="'+pr.k+'"'+(want.length?'':' disabled')+' aria-pressed="'+lit+'">'+pr.n+'</button>';
+  });
+  h+='</div>';
+  var opens=[];for(i=0;i<6;i++){var o=slotAt("open",i);if(o)opens.push(o);}
+  if(opens.length){
+    h+='<div class="seglab">Open</div><div class="seg small" style="margin:4px 0 12px">';
+    opens.forEach(function(x){h+='<button data-slot="'+x.id+'"'+(testable(x)?'':' disabled')+' aria-pressed="'+(picked(x)&&testable(x))+'">'+POS[x.hero][0]+'</button>';});
+    h+='</div>';
+  }
+  [["vsr","Facing a raise","the raiser"],["vs3","Facing a 3-bet","the 3-bettor"]].forEach(function(g){
+    var mine=std.filter(function(x){return x.sit===g[0];});if(!mine.length)return;
+    var rows=[],cols=[];
+    mine.forEach(function(x){if(rows.indexOf(x.hero)<0)rows.push(x.hero);if(cols.indexOf(x.vill)<0)cols.push(x.vill);});
+    rows.sort(function(a,b){return a-b;});cols.sort(function(a,b){return a-b;});
+    h+='<div class="seglab">'+g[1]+'</div><div class="pgrid" style="grid-template-columns:2.6em repeat('+cols.length+',minmax(0,1fr))">';
+    h+='<span class="pcorner">you \u2193</span>';
+    cols.forEach(function(c){h+='<button class="phead" data-pcol="'+g[0]+':'+c+'" aria-label="All against '+POS[c][0]+'">'+POS[c][0]+'</button>';});
+    rows.forEach(function(r){
+      h+='<button class="phead prow" data-prow="'+g[0]+':'+r+'" aria-label="All as '+POS[r][0]+'">'+POS[r][0]+'</button>';
+      cols.forEach(function(c){
+        var x=slotAt(g[0],r,c);
+        if(!x){h+='<span class="pnone"></span>';return;}
+        h+='<button class="pcell" data-slot="'+x.id+'"'+(testable(x)?'':' disabled')+' aria-pressed="'+(picked(x)&&testable(x))+'" aria-label="'+esc(nameOf(x))+'"></button>';
+      });
+    });
+    h+='</div><div class="pickhint" style="margin:6px 2px 12px">Rows: your seat. Columns: '+g[2]+'. Tap a seat name for its whole row or column.</div>';
+  });
+  var custom=loadedSlots().filter(function(x){return sitOf(x)==="custom";});
+  if(custom.length){
+    h+='<div class="seglab">Your own scenarios</div><div class="seg small" style="margin:4px 0 12px">';
+    custom.forEach(function(x){h+='<button data-slot="'+x.id+'"'+(testable(x)?'':' disabled')+' aria-pressed="'+(picked(x)&&testable(x))+'">'+esc(codeOf(x))+'</button>';});
+    h+='</div>';
+  }
+  var n=use.filter(picked).length+custom.filter(function(x){return picked(x)&&testable(x);}).length;
+  h+='<div class="pickcount"><b>'+n+'</b> scenario'+(n===1?'':'s')+' in rotation</div>';
+  return h;
+}
 function offFromOn(){
   var off={sit:[],hero:[],vill:[]},std=loadedSlots().filter(function(s){return sitOf(s)!=="custom";});
   function allOff(list){return list.length&&list.every(function(s){return S.on[s.id]===false;});}
@@ -1686,22 +1761,7 @@ function renderSheet(){
   if(!loadedSlots().length){
     el("segSlots").innerHTML='<span style="font-size:13px;color:var(--muted)">Load a chart first.</span>';
   } else {
-    h+='<div class="segrow"><div class="seglab">Situation</div><div class="seg small" style="margin:0">';
-    PICK_SITS.forEach(function(k){h+=btn('data-psit="'+k+'"',SITL[k],st.sitAvail[k],!isOff("sit",k));});
-    h+='</div></div>';
-    h+='<div class="segrow"><div class="seglab">Hero seat</div><div class="seg small" style="margin:0">';
-    for(i=0;i<6;i++)h+=btn('data-phero="'+i+'"',POS[i][0],st.heroAvail[i],!isOff("hero",i));
-    h+='</div></div>';
-    h+='<div class="segrow"><div class="seglab">Villain seat</div><div class="seg small" style="margin:0">';
-    for(i=0;i<6;i++)h+=btn('data-pvill="'+i+'"',POS[i][0],st.villUsed&&st.villAvail[i],!isOff("vill",i));
-    h+='</div><div class="pickhint">The raiser when facing a raise, the 3-bettor when facing a 3\u2011bet</div></div>';
-    var custom=loadedSlots().filter(function(x){return sitOf(x)==="custom";});
-    if(custom.length){
-      h+='<div class="segrow"><div class="seglab">Other</div><div class="seg small" style="margin:0">';
-      custom.forEach(function(x){h+=btn('data-slot="'+x.id+'"',codeOf(x),testable(x),S.on[x.id]!==false);});
-      h+='</div></div>';
-    }
-    h+='<div class="pickhint">Greyed out: no chart for that seat, nothing to ask in the test below, or it can\u2019t be in that spot at six-max.</div>';
+    h+=pickerHTML();
   }
   if(h)el("segSlots").innerHTML=h;
   var tt=document.querySelectorAll("#segTest button");
@@ -1862,12 +1922,17 @@ el("fbPick").addEventListener("click",function(e){
 el("sheet").addEventListener("click",function(e){
   var b=e.target.closest("button");if(!b)return;
   if(b.dataset.prev){previewSlot=b.dataset.prev;renderPreview();return;}
-  var kind=b.dataset.psit!==undefined?"sit":b.dataset.phero!==undefined?"hero":b.dataset.pvill!==undefined?"vill":null;
-  if(kind){
+  if(b.dataset.preset||b.dataset.prow||b.dataset.pcol){
     if(b.disabled)return;
-    var v=kind==="sit"?b.dataset.psit:+(kind==="hero"?b.dataset.phero:b.dataset.pvill);
-    var list=S.off[kind],at=list.indexOf(v);
-    if(at>=0)list.splice(at,1);else list.push(v);
+    var use=stdSlots().filter(testable),grp;
+    if(b.dataset.preset){
+      var pr=PRESETS.filter(function(x){return x.k===b.dataset.preset;})[0];
+      use.forEach(function(x){S.on[x.id]=pr.f(x);});
+    } else {
+      var key=(b.dataset.prow||b.dataset.pcol).split(":"),sit=key[0],seat=+key[1];
+      grp=use.filter(function(x){return x.sit===sit&&(b.dataset.prow?x.hero===seat:x.vill===seat);});
+      setOn(grp,!grp.every(picked));                // any off: switch them all on; all on: switch them off
+    }
     renderSheet();renderPreview();save();if(!answered)deal(true);
     return;
   }
