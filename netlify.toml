@@ -1,0 +1,11 @@
+# Netlify settings for the Preflop Trainer. These take priority over the dashboard.
+# The app's files live in the preflop-trainer folder; there is nothing to build.
+[build]
+  publish = "preflop-trainer"
+  command = ""
+
+# Always check for a new offline worker, so updates reach installed copies promptly.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
