@@ -568,7 +568,7 @@ ul.tight li{margin-bottom:5px}
   </div>
   <div class="row">
     <div class="lbl">Table view<small>Hide the position, show the button and blinds</small></div>
-    <button class="sw" id="swTable" role="switch" aria-checked="false"></button>
+    <button class="sw" id="swTable" role="switch" aria-checked="true"></button>
   </div>
   <div class="row">
     <div class="lbl">Deal by combos<small>Offsuit appears 3× as often as suited, like real deals</small></div>
@@ -641,7 +641,7 @@ var S={
   off:{sit:[],hero:[],vill:[]}, // situations and seats taken out of rotation
   f:{pair:true,suited:true,offsuit:true,onlyPlayable:false,edgeBand:0,test:"all",depth:1,fixMode:false,byCombos:true,
      edgeTypes:{rf:true,rc:true,cf:true},allCalls:true},
-  p:{autoNext:true,showGrid:true,tableView:false,sound:true,fb:true,vol:0.5,sndR:0,sndW:2},
+  p:{autoNext:true,showGrid:true,tableView:true,tvOn:1,sound:true,fb:true,vol:0.5,sndR:0,sndW:2},
   fix:{},
   stats:{n:0,ok:0,streak:0,best:0,byPos:{},byAct:[0,0,0,0,0,0],bySit:{},misses:[]},
   seeded:[],
@@ -675,6 +675,7 @@ function hydrate(d){
   if(TESTS.indexOf(S.f.test)<0)S.f.test="all";
   if(S.f.depth!==2)S.f.depth=1;
   if(d.p)for(var k2 in d.p)if(k2 in S.p)S.p[k2]=d.p[k2];
+  if(d.p&&!("tvOn" in d.p))S.p.tableView=true;        // table view became the default: turn it on once for older saves
   if(d.stats)S.stats=Object.assign(S.stats,d.stats);
   S.fix=(d.fix&&typeof d.fix==="object")?d.fix:seedFix(d.stats);
   if(!Array.isArray(S.stats.byAct)||S.stats.byAct.length!==6)S.stats.byAct=[0,0,0,0,0,0];
