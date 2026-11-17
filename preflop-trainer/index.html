@@ -1037,16 +1037,34 @@ function el(id){return document.getElementById(id);}
 function fitCorners(){
   try{
     var fam=getComputedStyle(document.documentElement).getPropertyValue("--display").trim()||"serif";
-    var c=document.createElement("canvas").getContext("2d");c.font="100px "+fam;
-    var q=c.measureText("Q"),m=c.measureText("M");
-    if(typeof q.actualBoundingBoxDescent!=="number"||typeof m.fontBoundingBoxAscent!=="number")return;
-    var asc=m.fontBoundingBoxAscent/100,desc=m.fontBoundingBoxDescent/100,tail=q.actualBoundingBoxDescent/100;
-    var below=(0.9-asc+desc)/2;                          // how far the rank's .9 line box reaches below the baseline
+    // 1. The rank's line box: how far it reaches below the baseline (a zero-size box sits on the baseline).
+    var probe=document.createElement("div");
+    probe.style.cssText="position:absolute;left:-9999px;top:0;visibility:hidden;font-size:200px;line-height:.9;font-family:"+fam;
+    probe.innerHTML='<span style="display:inline-block;line-height:.9">Q<i style="display:inline-block;width:0;height:0"></i></span>';
+    document.body.appendChild(probe);
+    var box=probe.firstChild,mark=box.lastChild;
+    var below=(box.getBoundingClientRect().bottom-mark.getBoundingClientRect().top)/200;
+    document.body.removeChild(probe);
+    // 2. The Q's ink: draw it and find its lowest pixel, so the real tail is measured.
+    var cv=document.createElement("canvas");cv.width=400;cv.height=400;
+    var c=cv.getContext("2d");c.font="200px "+fam;c.textBaseline="alphabetic";c.fillStyle="#000";c.fillText("Q",50,250);
+    var px=c.getImageData(0,0,400,400).data,low=250;
+    for(var y=399;y>=250;y--){var hit=false;for(var x=0;x<400;x++)if(px[(y*400+x)*4+3]>40){hit=true;break;}if(hit){low=y+1;break;}}
+    var tail=(low-250)/200;
     var gap=Math.max(0.02,(tail-below)*1.5+0.3);        // rank is .3em and suit .2em: x1.5 converts; +.3 breathing room
-    document.documentElement.style.setProperty("--qtail",Math.min(0.8,gap).toFixed(3)+"em");
+    document.documentElement.style.setProperty("--qtail",Math.min(0.9,gap).toFixed(3)+"em");
   }catch(e){}
 }
-if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitCorners);else fitCorners();
+// Load the display face itself before measuring ("fonts ready" can come before it has even been requested),
+// and measure again whenever another font finishes loading.
+(function(){
+  var fam=(getComputedStyle(document.documentElement).getPropertyValue("--display")||"").trim();
+  var first=fam.split(",")[0].trim();
+  if(document.fonts&&document.fonts.load&&first){
+    document.fonts.load("100px "+first,"Q").then(fitCorners,fitCorners);
+    if(document.fonts.addEventListener)document.fonts.addEventListener("loadingdone",fitCorners);
+  } else fitCorners();
+})();
 
 /* ---------------- sound ----------------
    Real recordings of cards and chips: Kenney's Casino Audio pack (kenney.nl, CC0: free for any use).
