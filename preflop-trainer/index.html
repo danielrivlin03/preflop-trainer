@@ -406,7 +406,9 @@ ul.tight li{margin-bottom:5px}
 .seg.presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
 .seg.presets button{padding:9px 10px}
 .presets button[aria-pressed="true"]{background:var(--brass);border-color:var(--brass);color:var(--bg)}
-.pickcount{font-size:13px;color:var(--muted);margin:2px 2px 0}
+.pickcount{font-size:13px;color:var(--muted);margin:2px 2px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:30px}
+.pclear{border:0;background:none;padding:6px 2px;font-size:12.5px;font-weight:600;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.pclear:active{color:var(--text)}
 .pickcount b{color:var(--text)}
 .row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line-soft)}
 .row .lbl{flex:1;font-size:14px}
@@ -618,7 +620,7 @@ ul.tight li{margin-bottom:5px}
     </div>
   </div>
   </div>
-  <div class="pickhint" id="appVersion" style="text-align:center;margin-top:14px">App version 6 · 17 Nov 2026</div>
+  <div class="pickhint" id="appVersion" style="text-align:center;margin-top:14px">App version 7 · 17 Nov 2026</div>
   <div class="btnrow" style="margin:14px 0 4px">
     <button class="btn primary" id="btnCloseSheet" style="flex:1">Done</button>
   </div>
@@ -1001,7 +1003,8 @@ function pickerHTML(){
     h+='</div>';
   }
   var n=use.filter(picked).length+custom.filter(function(x){return picked(x)&&testable(x);}).length;
-  h+='<div class="pickcount"><b>'+n+'</b> scenario'+(n===1?'':'s')+' in rotation</div>';
+  h+='<div class="pickcount"><span><b>'+n+'</b> scenario'+(n===1?'':'s')+' in rotation</span>'+
+     (n?'<button class="pclear" data-pclear="1">Clear all</button>':'')+'</div>';
   return h;
 }
 function offFromOn(){
@@ -1922,6 +1925,11 @@ el("fbPick").addEventListener("click",function(e){
 el("sheet").addEventListener("click",function(e){
   var b=e.target.closest("button");if(!b)return;
   if(b.dataset.prev){previewSlot=b.dataset.prev;renderPreview();return;}
+  if(b.dataset.pclear){
+    loadedSlots().forEach(function(x){S.on[x.id]=false;});
+    renderSheet();renderPreview();save();if(!answered)deal(true);
+    return;
+  }
   if(b.dataset.preset||b.dataset.prow||b.dataset.pcol){
     if(b.disabled)return;
     var use=stdSlots().filter(testable),grp;
