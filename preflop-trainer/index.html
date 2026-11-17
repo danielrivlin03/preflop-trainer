@@ -203,8 +203,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .pcard:last-child{transform:rotate(6deg);margin-left:-.13em}
 .pcard .idx{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:.9}
 .pcard .idx .r{font-family:var(--display);font-size:.3em}
-.pcard .idx .s{font-size:.2em;line-height:1;margin-top:.3em}
-.pcard .idx.q .s{margin-top:.8em}   /* the display font's Q has a long tail sweeping under it */
+.pcard .idx .s{font-size:.2em;line-height:1;margin-top:.32em}   /* the same on every card: just clears the Q's long tail */
 .pcard .tl{top:.055em;left:.075em}
 .pcard .br{bottom:.055em;right:.075em;transform:rotate(180deg)}
 .pcard .face{position:absolute;inset:0;display:grid;place-items:center;font-size:.44em;line-height:1;opacity:.9}
@@ -602,6 +601,7 @@ ul.tight li{margin-bottom:5px}
     </div>
   </div>
   </div>
+  <div class="pickhint" id="appVersion" style="text-align:center;margin-top:14px">App version 5 · 17 Nov 2026</div>
   <div class="btnrow" style="margin:14px 0 4px">
     <button class="btn primary" id="btnCloseSheet" style="flex:1">Done</button>
   </div>
@@ -1150,9 +1150,9 @@ function showSound(){
 }
 function cardHTML(rank,suit,small){
   return '<div class="pcard'+(small?" sm":"")+'" data-red="'+suit.red+'">'+
-    '<span class="idx tl'+(rank==="Q"?" q":"")+'"><span class="r">'+rank+'</span><span class="s">'+suit.g+'</span></span>'+
+    '<span class="idx tl"><span class="r">'+rank+'</span><span class="s">'+suit.g+'</span></span>'+
     '<span class="face">'+suit.g+'</span>'+
-    '<span class="idx br'+(rank==="Q"?" q":"")+'"><span class="r">'+rank+'</span><span class="s">'+suit.g+'</span></span>'+
+    '<span class="idx br"><span class="r">'+rank+'</span><span class="s">'+suit.g+'</span></span>'+
   '</div>';
 }
 var SEATS=[[50,100],[11,70],[11,30],[50,4.5],[89,30],[89,70]];  // k places to the hero's left
